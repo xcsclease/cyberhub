@@ -1,32 +1,15 @@
-#pragma once
-#include <3ds.h>
-#include <stdbool.h>
-
-#define MAX_ENTRIES    512
-#define MAX_NAME_LEN   128
-#define MAX_PATH_LEN   256
-
-typedef enum {
-    ENTRY_HOMEBREW,  // .3dsx — your own homebrew games / apps
-    ENTRY_EMULATOR,  // .3dsx — known emulator (mGBA, RetroArch, etc.)
-    ENTRY_TITLE,     // CIA-installed 3DS retail game
-    ENTRY_ROM,       // ROM file — auto-launched through the right emulator
-} EntryType;
-
-typedef struct {
-    char      name[MAX_NAME_LEN];
-    char      path[MAX_PATH_LEN];      // .3dsx path, title path, or ROM path
-    char      emu_path[MAX_PATH_LEN];  // emulator .3dsx (ENTRY_ROM only)
-    char      system[12];              // "GBA", "SNES", "NES", "NDS", etc.
-    EntryType type;
-    u64       title_id;
-    bool      emu_missing;             // true if required emulator not on SD card
-} ScanEntry;
-
-void       scanner_init(void);
-void       scanner_scan(void);
-int        scanner_get_count(void);
-ScanEntry *scanner_get_entry(int idx);
-void       scanner_launch(int idx);
-bool       scanner_launch_pending(void);
-void       scanner_cleanup(void);
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "cyberhub-preview",
+      "runtimeExecutable": "perl",
+      "runtimeArgs": [
+        "-MIO::Socket::INET",
+        "-e",
+        "use IO::Socket::INET; use POSIX; my $srv=IO::Socket::INET->new(LocalPort=>3000,Type=>SOCK_STREAM,Reuse=>1,Listen=>10) or die $!; while(my $c=$srv->accept){my $req=''; while(my $l=<$c>){$req.=$l;last if $l eq \"\\r\\n\"} my $file='C:/Users/gensh/CyberHub/preview.html'; open(my $f,'<',$file) or do{print $c \"HTTP/1.1 404 Not Found\\r\\n\\r\\n\";close $c;next}; my $body=do{local $/;<$f>}; close $f; my $len=length($body); print $c \"HTTP/1.1 200 OK\\r\\nContent-Type: text/html; charset=utf-8\\r\\nContent-Length: $len\\r\\n\\r\\n$body\"; close $c}"
+      ],
+      "port": 3000
+    }
+  ]
+}
