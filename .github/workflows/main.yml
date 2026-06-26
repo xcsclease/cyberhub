@@ -1,0 +1,37 @@
+name: Build CyberHub
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install 3DS libraries
+        run: |
+          dkp-pacman -Sy --noconfirm \
+            3ds-dev \
+            3ds-citro2d \
+            3ds-citro3d \
+            3ds-libctru
+
+      - name: Build CyberHub
+        run: make
+        env:
+          DEVKITPRO: /opt/devkitpro
+          DEVKITARM: /opt/devkitpro/devkitARM
+
+      - name: Upload .3dsx artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CyberHub
+          path: CyberHub.3dsx
+          if-no-files-found: error
