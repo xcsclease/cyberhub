@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CyberHub Manager</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --bg:     #060612;
+  --panel:  #04101e;
+  --grid:   rgba(0,56,88,0.18);
+  --cyan:   #00ffff;
+  --cyan2:  #009999;
+  --pink:   #ff0088;
+  --pink2:  #880044;
+  --green:  #08ff44;
+  --green2: #047720;
+  --red:    #ff0808;
+  --yellow: #ffcc00;
+  --white:  #e0e0ff;
+  --gray:   #555577;
+  --dgray:  #1a1a2e;
+}
+
+body {
+  background: var(--bg);
+  color: var(--white);
+  font-family: 'Courier New', monospace;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+body::after {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:999;
+  background: repeating-linear-gradient(
+    to bottom, transparent 0, transparent 1px,
+    rgba(0,0,0,0.12) 1px, rgba(0,0,0,0.12) 2px
+  );
+}
+
+/* ── Header ───────────────────────────────── */
+header {
+  background: var(--panel);
+  border-bottom: 1px solid rgba(0,255,255,0.2);
+  padding: 8px 18px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+.logo { font-size: 20px; font-weight: bold; letter-spacing: 7px; color: var(--cyan);
+  text-shadow: 0 0 10px var(--cyan); animation: logo-pulse 3s ease-in-out infinite; }
+@keyframes logo-pulse {
+  0%,100% { text-shadow: 0 0 8px var(--cyan); }
+  50%      { text-shadow: 0 0 20px var(--cyan), 0 0 40px rgba(0,255,255,0.4); }
+}
+.header-sub  { font-size: 10px; color: var(--cyan2); letter-spacing: 2px; }
+.header-note { font-size: 8px;  color: var(--gray);  margin-top: 2px; }
+
+/* ── Layout ───────────────────────────────── */
+main {
+  display: grid;
+  grid-template-columns: 1fr 370px;
+  flex: 1; overflow: hidden;
+}
+
+/* ── Left: Library ────────────────────────── */
+.library {
+  display: flex; flex-direction: column;
+  border-right: 1px solid rgba(0,255,255,0.1);
+  overflow: hidden;
+}
+.panel-header {
+  background: var(--panel); padding: 7px 14px;
+  font-size: 10px; letter-spacing: 3px; color: var(--pink);
+  border-bottom: 1px solid rgba(255,0,136,0.2);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+
+/* Drop zone */
+#dropzone {
+  margin: 10px; border: 2px dashed rgba(0,255,255,0.25);
+  border-radius: 3px; padding: 14px; text-align: center;
+  cursor: pointer; transition: all 0.2s; flex-shrink: 0;
+}
+#dropzone:hover, #dropzone.dragover {
+  border-color: var(--cyan); background: rgba(0,255,255,0.04);
+  box-shadow: 0 0 14px rgba(0,255,255,0.15);
+}
+.drop-icon  { font-size: 22px; margin-bottom: 4px; }
+.drop-title { font-size: 12px; color: var(--cyan); letter-spacing: 2px; margin-bottom: 3px; }
+.drop-sub   { font-size: 9px; color: var(--gray); }
+.drop-types { font-size: 8px; color: var(--pink2); margin-top: 5px; letter-spacing: 1px; }
+#fileInput  { display: none; }
+.drop-btn {
+  margin-top: 8px; padding: 4px 12px; background: transparent;
+  border: 1px solid var(--cyan2); color: var(--cyan2);
+  font-family: 'Courier New', monospace; font-size: 9px;
+  letter-spacing: 2px; cursor: pointer; transition: all 0.2s;
+}
+.drop-btn:hover { border-color: var(--cyan); color: var(--cyan); box-shadow: 0 0 6px rgba(0,255,255,0.3); }
+
+/* Game list */
+#gamelist { flex: 1; overflow-y: auto; padding: 0 10px 10px; }
+#gamelist::-webkit-scrollbar { width: 3px; }
+#gamelist::-webkit-scrollbar-thumb { background: var(--cyan2); }
+
+.empty-state { text-align:center; padding:30px 16px; color:var(--gray); font-size:10px; letter-spacing:1px; line-height:2; }
+
+.game-item {
+  display: flex; align-items: center; padding: 6px 8px;
+  margin-bottom: 3px; background: rgba(4,14,30,0.8);
+  border: 1px solid rgba(0,255,255,0.07); border-radius: 2px;
+  gap: 6px; cursor: pointer; transition: all 0.15s;
+}
+.game-item:hover   { border-color: rgba(0,255,255,0.25); background: rgba(0,32,56,0.5); }
+.game-item.active  { border-color: var(--cyan); background: rgba(0,40,72,0.7);
+  box-shadow: 0 0 6px rgba(0,255,255,0.2); }
+.game-item:hover .remove-btn { opacity: 1; }
+.game-name { flex:1; font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+.badge { font-size:8px; padding:1px 4px; border-radius:2px; font-weight:bold; letter-spacing:1px; flex-shrink:0; }
+.badge-hb  { color:var(--pink);   border:1px solid var(--pink2); }
+.badge-emu { color:var(--cyan);   border:1px solid var(--cyan2); }
+.badge-3ds { color:var(--green);  border:1px solid var(--green2); }
+.badge-cia { color:var(--green);  border:1px solid var(--green2); }
+.badge-rom { color:var(--yellow); border:1px solid rgba(255,204,0,0.4); }
+
+.remove-btn { background:none; border:none; color:var(--gray); cursor:pointer;
+  font-size:11px; opacity:0; transition:all 0.15s; padding:0 2px; flex-shrink:0; }
+.remove-btn:hover { color:var(--red); }
+
+/* ── Right: Preview + SD ──────────────────── */
+.right-col {
+  display: flex; flex-direction: column; overflow: hidden;
+  background: rgba(4,6,18,0.4);
+}
+
+/* 3DS Preview */
+.preview-section {
+  flex-shrink: 0; padding: 10px 12px 8px;
+  border-bottom: 1px solid rgba(255,0,136,0.15);
+  display: flex; flex-direction: column; align-items: center;
+  background: rgba(4,8,20,0.6);
+}
+
+/* Shell wraps each screen */
+.ds-shell-top {
+  background: #181830; border-radius: 10px 10px 0 0;
+  padding: 8px 10px 4px; border: 1px solid #2a2a44;
+  box-shadow: 0 0 20px rgba(0,0,0,0.6);
+}
+.ds-shell-bot {
+  background: #141428; border-radius: 0 0 12px 12px;
+  padding: 4px 10px 10px; border: 1px solid #2a2a44;
+  border-top: none; display: flex; flex-direction: column; align-items: center;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+}
+.ds-camera {
+  width: 5px; height: 5px; background: #1a1a33; border-radius: 50%;
+  border: 1px solid #2a2a44; margin: 0 auto 5px;
+}
+.ds-hinge {
+  width: 350px; height: 5px; background: #0d0d20;
+  border-top: 1px solid #222240; border-bottom: 1px solid #222240;
+}
+
+/* Screens */
+.ds-screen {
+  position: relative; overflow: hidden; border-radius: 3px;
+  border: 1px solid #0a0a1e;
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.5), 0 0 0 1px #222240;
+}
+.ds-top-screen { width: 330px; height: 198px; }
+.ds-bot-screen { width: 264px; height: 198px; margin-top: 3px; }
+
+.ds-bg {
+  position: absolute; inset: 0;
+  background-color: #060612;
+  background-image:
+    linear-gradient(rgba(0,56,88,0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,56,88,0.15) 1px, transparent 1px);
+  background-size: 17px 17px;
+}
+.ds-scanlines {
+  position: absolute; inset: 0; pointer-events: none; z-index: 50;
+  background: repeating-linear-gradient(
+    to bottom, transparent 0, transparent 1px,
+    rgba(0,0,0,0.18) 1px, rgba(0,0,0,0.18) 2px
+  );
+}
+
+/* Preview header bar */
+.pv-header {
+  position: absolute; top: 0; left: 0; right: 0; height: 20px;
+  background: rgba(4,14,32,0.95); z-index: 10;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 6px;
+  border-bottom: 1px solid rgba(0,255,255,0.15);
+}
+.pv-header-title { font-size: 8px; letter-spacing: 2px; animation: blink-c 2s step-end infinite; }
+@keyframes blink-c {
+  0%,49%  { color:#00ffff; text-shadow:0 0 4px #00ffff; }
+  50%,100%{ color:#009999; }
+}
+.pv-status { font-size: 7px; }
+
+/* Preview entry list */
+.pv-list { position: absolute; top: 22px; left: 0; right: 0; bottom: 16px; overflow: hidden; }
+.pv-entry {
+  height: 22px; display: flex; align-items: center;
+  padding: 0 6px; gap: 5px; border-bottom: 1px solid #1a1a2e;
+  cursor: pointer; transition: background 0.1s;
+  font-size: 8.5px;
+}
+.pv-entry:hover   { background: rgba(0,30,50,0.5); }
+.pv-entry.pv-sel  { background: rgba(0,40,72,0.8); border-bottom-color: transparent; }
+.pv-entry.pv-sel  { box-shadow: inset 0 0 0 1px rgba(0,255,255,0.35); }
+.pv-arrow { width: 10px; color: var(--cyan); flex-shrink: 0; }
+.pv-name  { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pv-badge { font-size: 7px; padding: 0 3px; flex-shrink: 0; }
+
+/* Preview footer */
+.pv-footer {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 16px;
+  background: rgba(4,14,32,0.95); z-index: 10;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 6px; font-size: 7px;
+  border-top: 1px solid rgba(255,0,136,0.15);
+}
+.pv-psy { animation: psy-c 4s ease-in-out infinite alternate; }
+@keyframes psy-c {
+  0%   { color: var(--green); }
+  60%  { color: var(--yellow); }
+  100% { color: var(--red); text-shadow: 0 0 4px var(--red); }
+}
+
+/* Bottom screen preview */
+.pv-logo-bar {
+  position: absolute; top: 0; left: 0; right: 0; height: 34px;
+  background: rgba(4,14,32,0.95); z-index: 10;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border-bottom: 1px solid rgba(255,0,136,0.2);
+}
+.pv-logo { font-size: 11px; font-weight: bold; letter-spacing: 5px;
+  animation: logo-pulse 2s ease-in-out infinite; }
+.pv-logo-sub { font-size: 7px; color: var(--cyan2); letter-spacing: 1px; margin-top: 1px; }
+
+.pv-info {
+  position: absolute; top: 40px; left: 5px; right: 5px; height: 90px;
+  background: rgba(4,14,32,0.9); padding: 5px 8px;
+  border: 1px solid rgba(0,255,255,0.15);
+  box-shadow: 0 0 6px rgba(0,255,255,0.08);
+  z-index: 10;
+}
+.pv-info-label { font-size: 7px; color: var(--cyan2); margin-bottom: 3px; }
+.pv-info-name  { font-size: 9.5px; margin-bottom: 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pv-info-type  { font-size: 7.5px; margin-bottom: 3px; }
+.pv-info-path  { font-size: 6.5px; color: var(--gray); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+.pv-controls {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: rgba(4,14,32,0.95); padding: 5px 8px;
+  border-top: 1px solid rgba(0,255,255,0.1);
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 3px 8px; z-index: 10;
+}
+.pv-ctrl { display:flex; flex-direction:column; gap:1px; }
+.pv-ctrl-btn  { font-size: 7px; font-weight: bold; }
+.pv-ctrl-desc { font-size: 6px; color: var(--gray); }
+
+/* SD tree */
+.sd-section { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.sd-tree { flex:1; overflow-y:auto; padding:8px 12px; font-size:9px; line-height:1.9; }
+.sd-tree::-webkit-scrollbar { width:3px; }
+.sd-tree::-webkit-scrollbar-thumb { background: var(--pink2); }
+.tree-root   { color:var(--yellow); font-weight:bold; }
+.tree-folder { color:var(--cyan2);  padding-left:12px; }
+.tree-file   { color:var(--gray);   padding-left:24px; font-size:8px; }
+.tree-file.hb  { color:var(--pink2); }
+.tree-file.emu { color:var(--cyan2); }
+.tree-file.rom { color:rgba(255,204,0,0.7); }
+.tree-file.cia { color:var(--green2); }
+.sd-empty { color:var(--gray); font-size:9px; text-align:center; padding:16px 10px; letter-spacing:1px; line-height:2; }
+
+/* ── Footer ───────────────────────────────── */
+footer {
+  background: var(--panel); border-top: 1px solid rgba(255,0,136,0.2);
+  padding: 8px 14px; display:flex; align-items:center; gap:8px; flex-shrink:0;
+}
+.count-display { font-size:9px; color:var(--gray); letter-spacing:1px; flex:1; }
+.count-display span { color:var(--cyan); }
+.action-btn {
+  padding: 6px 14px; font-family:'Courier New',monospace; font-size:10px;
+  letter-spacing:2px; cursor:pointer; border-radius:2px; transition:all 0.2s; font-weight:bold;
+}
+.btn-export {
+  background: rgba(0,255,255,0.08); border:1px solid var(--cyan); color:var(--cyan);
+  box-shadow: 0 0 6px rgba(0,255,255,0.15);
+}
+.btn-export:hover:not(:disabled) { background:rgba(0,255,255,0.18); box-shadow:0 0 14px rgba(0,255,255,0.35); }
+.btn-export:disabled { opacity:0.3; cursor:not-allowed; }
+.btn-clear { background:transparent; border:1px solid rgba(255,0,136,0.35); color:var(--pink2); }
+.btn-clear:hover { border-color:var(--pink); color:var(--pink); }
+.btn-source { background:transparent; border:1px solid rgba(255,204,0,0.35); color:rgba(255,204,0,0.7); font-size:9px; }
+.btn-source:hover { border-color:var(--yellow); color:var(--yellow); }
+
+/* Toast */
+#toast {
+  position:fixed; bottom:60px; left:50%; transform:translateX(-50%) translateY(12px);
+  background:var(--panel); border:1px solid var(--cyan); box-shadow:0 0 16px rgba(0,255,255,0.25);
+  padding:8px 20px; font-size:10px; letter-spacing:2px; color:var(--cyan);
+  border-radius:2px; opacity:0; transition:all 0.3s; z-index:1000; pointer-events:none;
+}
+#toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+#toast.err  { border-color:var(--red); color:var(--red); box-shadow:0 0 16px rgba(255,8,8,0.25); }
+
+/* Progress */
+#prog-overlay {
+  display:none; position:fixed; inset:0; background:rgba(6,6,18,0.88);
+  z-index:500; align-items:center; justify-content:center; flex-direction:column; gap:14px;
+}
+#prog-overlay.show { display:flex; }
+.prog-title { font-size:13px; letter-spacing:4px; color:var(--cyan); }
+.prog-bar-wrap { width:300px; height:5px; background:rgba(0,255,255,0.1); border:1px solid rgba(0,255,255,0.3); }
+.prog-bar-fill { height:100%; background:var(--cyan); box-shadow:0 0 6px var(--cyan); width:0%; transition:width 0.1s; }
+.prog-msg { font-size:9px; color:var(--gray); letter-spacing:1px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">C Y B E R H U B</div>
+    <div class="header-sub">// PC MANAGER // SD CARD BUILDER //</div>
+  </div>
+  <div style="text-align:right">
+    <div class="header-sub">DRAG · DROP · DEPLOY TO 3DS</div>
+    <div class="header-note">SD EXPORT REQUIRES CHROME OR EDGE</div>
+  </div>
+</header>
+
+<main>
+  <!-- ── Left: Library ── -->
+  <div class="library">
+    <div class="panel-header">
+      <span>// GAME LIBRARY</span>
+      <span style="display:flex;gap:8px">
+        <span class="badge badge-hb">[HB]</span>
+        <span class="badge badge-emu">[EMU]</span>
+        <span class="badge badge-rom">[ROM]</span>
+        <span class="badge badge-cia">[CIA]</span>
+      </span>
+    </div>
+
+    <div id="dropzone">
+      <div class="drop-icon">⬇</div>
+      <div class="drop-title">DROP FILES HERE</div>
+      <div class="drop-sub">or click to browse</div>
+      <div class="drop-types">
+        .CIA · .3DSX · .GBA · .GB · .GBC · .NDS · .NES · .SFC · .SMC<br>
+        .GEN · .MD · .GG · .SMS · .PCE · .N64 · .Z64 · .CUE · .ZIP · and more
+      </div>
+      <button class="drop-btn" onclick="document.getElementById('fileInput').click()">[ BROWSE FILES ]</button>
+      <input type="file" id="fileInput" multiple>
+    </div>
+
+    <div id="gamelist">
+      <div class="empty-state" id="empty-msg">
+        — NO PROGRAMS LOADED —<br>
+        Drop your .3dsx homebrew, emulators,<br>
+        .cia games, and ROM files above.
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Right: 3DS Preview + SD Tree ── -->
+  <div class="right-col">
+    <div class="panel-header">// 3DS LIVE PREVIEW</div>
+
+    <div class="preview-section">
+      <!-- Top shell -->
+      <div class="ds-shell-top">
+        <div class="ds-camera"></div>
+        <div class="ds-screen ds-top-screen">
+          <div class="ds-bg"></div>
+          <!-- Header -->
+          <div class="pv-header">
+            <span class="pv-header-title">[ CYBER HUB ]</span>
+            <span class="pv-status" id="pv-status" style="color:var(--gray)">// NO SIG //</span>
+          </div>
+          <!-- Game list -->
+          <div class="pv-list" id="pv-list">
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
+              <div style="font-size:9px;color:#333355;letter-spacing:2px">-- NO SIGNAL --</div>
+              <div style="font-size:7px;color:#222244;margin-top:6px;line-height:2">
+                ADD GAMES TO SEE PREVIEW
+              </div>
+            </div>
+          </div>
+          <!-- Footer -->
+          <div class="pv-footer">
+            <span style="color:var(--pink2)" id="pv-count">ENTRIES: 0</span>
+            <span class="pv-psy" id="pv-psy">PSY: 12%</span>
+          </div>
+          <div class="ds-scanlines"></div>
+        </div>
+      </div>
+
+      <!-- Hinge -->
+      <div class="ds-hinge"></div>
+
+      <!-- Bottom shell -->
+      <div class="ds-shell-bot">
+        <div class="ds-screen ds-bot-screen">
+          <div class="ds-bg"></div>
+          <!-- Logo -->
+          <div class="pv-logo-bar">
+            <div class="pv-logo">C Y B E R H U B</div>
+            <div class="pv-logo-sub">v1.0 // NEURAL LINK ACTIVE</div>
+          </div>
+          <!-- Info panel -->
+          <div class="pv-info" id="pv-info">
+            <div class="pv-info-label">> SELECTED:</div>
+            <div class="pv-info-name" id="pv-info-name" style="color:#333355;margin-top:4px">-- NOTHING SELECTED --</div>
+            <div class="pv-info-type" id="pv-info-type" style="color:#222233;margin-top:4px">ADD GAMES TO GET STARTED</div>
+            <div class="pv-info-path" id="pv-info-path"></div>
+          </div>
+          <!-- Controls -->
+          <div class="pv-controls">
+            <div class="pv-ctrl"><span class="pv-ctrl-btn" style="color:var(--green)">[A] LAUNCH</span><span class="pv-ctrl-desc">OPEN GAME</span></div>
+            <div class="pv-ctrl"><span class="pv-ctrl-btn" style="color:var(--cyan)">[R] REFRESH</span><span class="pv-ctrl-desc">RESCAN SD</span></div>
+            <div class="pv-ctrl"><span class="pv-ctrl-btn" style="color:var(--yellow)">[↑↓] NAV</span><span class="pv-ctrl-desc">NAVIGATE</span></div>
+            <div class="pv-ctrl"><span class="pv-ctrl-btn" style="color:var(--red)">[START] EXIT</span><span class="pv-ctrl-desc">QUIT HUB</span></div>
+          </div>
+          <div class="ds-scanlines"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SD Tree -->
+    <div class="sd-section">
+      <div class="panel-header" style="color:var(--cyan2)">// SD CARD STRUCTURE</div>
+      <div class="sd-tree" id="sd-tree">
+        <div class="sd-empty">Add files to see<br>the SD card layout.</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="count-display">
+    <span id="count-text">0</span> FILES &nbsp;·&nbsp; <span id="size-text">0 B</span>
+  </div>
+  <button class="action-btn btn-source" onclick="downloadSource()">[ GET 3DS SOURCE ]</button>
+  <button class="action-btn btn-clear"  onclick="clearAll()">[ CLEAR ]</button>
+  <button class="action-btn btn-export" id="export-btn" onclick="exportToSD()" disabled>[ PREPARE SD CARD ]</button>
+</footer>
+
+<div id="prog-overlay">
+  <div class="prog-title">WRITING TO SD CARD...</div>
+  <div class="prog-bar-wrap"><div class="prog-bar-fill" id="prog-fill"></div></div>
+  <div class="prog-msg" id="prog-msg">Initializing...</div>
+</div>
+<div id="toast"></div>
+
+<script>
+// ── ROM types ─────────────────────────────────────────────────────────────────
+const ROM_TYPES = {
+  '.gb':'.gb',   '.gbc':'.gbc', '.sgb':'.gb',
+  '.gba':'.gba',
+  '.nds':'.nds', '.dsi':'.nds',
+  '.nes':'.nes', '.fds':'.nes', '.unf':'.nes',
+  '.sfc':'.sfc', '.smc':'.sfc', '.fig':'.sfc', '.swc':'.sfc',
+  '.gen':'.gen', '.md':'.gen',  '.smd':'.gen',
+  '.gg':'.gg',   '.sms':'.sms', '.32x':'.32x',
+  '.pce':'.pce', '.tg16':'.pce',
+  '.a26':'.a26', '.a78':'.a78', '.lnx':'.lnx',
+  '.ngp':'.ngp', '.ngpc':'.ngp',
+  '.ws':'.ws',   '.wsc':'.ws',
+  '.vb':'.vb',   '.vboy':'.vb',
+  '.d64':'.c64', '.t64':'.c64', '.prg':'.c64',
+  '.z80':'.zx',  '.tzx':'.zx', '.sna':'.zx',
+  '.zip':'.arc',
+  '.cue':'.ps1', '.pbp':'.ps1', '.chd':'.ps1',
+  '.n64':'.n64', '.z64':'.n64', '.v64':'.n64',
+};
+
+const SYS_NAMES = {
+  '.gb':'GB','.gbc':'GBC','.gba':'GBA','.nds':'NDS','.nes':'NES',
+  '.sfc':'SNES','.gen':'GEN','.gg':'GG','.sms':'SMS','.32x':'32X',
+  '.pce':'PCE','.a26':'A26','.a78':'A78','.lnx':'LYNX',
+  '.ngp':'NGP','.ws':'WS','.vb':'VB','.c64':'C64','.zx':'ZX',
+  '.arc':'ARC','.ps1':'PS1','.n64':'N64',
+};
+
+const KNOWN_EMUS = [
+  'retroarch','mgba','snes9x','snes9x_3ds','tempgba','gbarunner2',
+  'twlightmenu','twilightmenu','universal-updater','universal_updater',
+  'fbi','godmode9','pcsx','pcsxr','nds-bootstrap','unes','nes_emu',
+];
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let library = [];
+let selectedIdx = 0;
+let psyFrame = 0;
+
+function categorize(file) {
+  const dot  = file.name.lastIndexOf('.');
+  const ext  = dot >= 0 ? file.name.slice(dot).toLowerCase() : '';
+  const base = dot >= 0 ? file.name.slice(0, dot).toLowerCase() : file.name.toLowerCase();
+
+  if (ext === '.cia')  return { type:'CIA',      badge:'CIA', system:'CIA'  };
+  if (ext === '.3dsx') {
+    const isEmu = KNOWN_EMUS.some(e => base.includes(e));
+    return { type: isEmu ? 'EMULATOR' : 'HOMEBREW', badge: isEmu ? 'EMU' : 'HB', system:'3DSX' };
+  }
+  const sysKey = ROM_TYPES[ext];
+  if (sysKey) return { type:'ROM', badge: SYS_NAMES[sysKey] || ext.slice(1).toUpperCase(), system: SYS_NAMES[sysKey] || ext.slice(1).toUpperCase() };
+  return null;
+}
+
+function prettyName(filename) {
+  const dot = filename.lastIndexOf('.');
+  let n = dot >= 0 ? filename.slice(0, dot) : filename;
+  return n.replace(/[_-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function formatSize(b) {
+  if (b < 1024)        return b + ' B';
+  if (b < 1024*1024)   return (b/1024).toFixed(1) + ' KB';
+  return (b/1024/1024).toFixed(1) + ' MB';
+}
+
+// ── Add files ─────────────────────────────────────────────────────────────────
+function addFiles(files) {
+  let added = 0, skipped = 0;
+  for (const file of files) {
+    const cat = categorize(file);
+    if (!cat) { skipped++; continue; }
+    if (library.find(e => e.file.name === file.name && e.file.size === file.size)) continue;
+    library.push({ file, name: prettyName(file.name), ...cat });
+    added++;
+  }
+  if (library.length > 0 && selectedIdx >= library.length) selectedIdx = 0;
+  render();
+  if (added)   toast(`${added} FILE${added>1?'S':''} ADDED`);
+  if (skipped) toast(`${skipped} NOT SUPPORTED`, true);
+}
+
+function removeItem(i) {
+  library.splice(i, 1);
+  if (selectedIdx >= library.length) selectedIdx = Math.max(0, library.length - 1);
+  render();
+}
+
+function clearAll() {
+  if (!library.length) return;
+  library = []; selectedIdx = 0;
+  render();
+  toast('LIBRARY CLEARED');
+}
+
+function selectItem(i) {
+  selectedIdx = i;
+  render();
+}
+
+// ── Render everything ─────────────────────────────────────────────────────────
+function render() {
+  renderLibrary();
+  renderPreview();
+  renderSDTree();
+  document.getElementById('count-text').textContent = library.length;
+  document.getElementById('size-text').textContent  = formatSize(library.reduce((s,e)=>s+e.file.size,0));
+  document.getElementById('export-btn').disabled    = library.length === 0;
+}
+
+function badgeClass(type) {
+  return { HOMEBREW:'badge-hb', EMULATOR:'badge-emu', ROM:'badge-rom', CIA:'badge-cia', TITLE:'badge-3ds' }[type] || 'badge-hb';
+}
+
+function renderLibrary() {
+  const el    = document.getElementById('gamelist');
+  const empty = document.getElementById('empty-msg');
+  if (!library.length) {
+    empty.style.display = 'block';
+    el.innerHTML = ''; el.appendChild(empty);
+    return;
+  }
+  empty.style.display = 'none';
+  el.innerHTML = library.map((e, i) => `
+    <div class="game-item${i===selectedIdx?' active':''}" onclick="selectItem(${i})">
+      <span class="badge ${badgeClass(e.type)}">[${e.badge}]</span>
+      <span class="game-name" title="${e.file.name}">${e.name}</span>
+      <span style="font-size:7px;color:var(--gray);flex-shrink:0">${formatSize(e.file.size)}</span>
+      <button class="remove-btn" onclick="event.stopPropagation();removeItem(${i})" title="Remove">✕</button>
+    </div>`).join('');
+}
+
+function renderPreview() {
+  const count = library.length;
+  // Status
+  document.getElementById('pv-status').textContent  = count ? '// ONLINE //' : '// NO SIG //';
+  document.getElementById('pv-status').style.color  = count ? 'var(--green)' : 'var(--gray)';
+  document.getElementById('pv-count').textContent   = `ENTRIES: ${count}`;
+
+  // PSY meter (animates on its own via CSS, but update text periodically)
+  psyFrame = (psyFrame + 1) % 100;
+  const psy = 12 + psyFrame;
+  document.getElementById('pv-psy').textContent = `PSY: ${psy}%`;
+
+  // Entry list
+  const listEl = document.getElementById('pv-list');
+  if (!count) {
+    listEl.innerHTML = `<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
+      <div style="font-size:9px;color:#333355;letter-spacing:2px">-- NO SIGNAL --</div>
+      <div style="font-size:7px;color:#222244;margin-top:6px;line-height:2">ADD GAMES TO SEE PREVIEW</div>
+    </div>`;
+    document.getElementById('pv-info-name').textContent  = '-- NOTHING SELECTED --';
+    document.getElementById('pv-info-name').style.color  = '#333355';
+    document.getElementById('pv-info-type').textContent  = 'ADD GAMES TO GET STARTED';
+    document.getElementById('pv-info-type').style.color  = '#222233';
+    document.getElementById('pv-info-path').textContent  = '';
+    return;
+  }
+
+  const PAGE = 7;
+  const scroll = Math.max(0, selectedIdx - PAGE + 1 <= 0 ? 0 : selectedIdx - PAGE + 1);
+  const visible = library.slice(scroll, scroll + PAGE);
+
+  const colorMap = {
+    HOMEBREW:'var(--pink2)', EMULATOR:'var(--cyan2)',
+    ROM:'rgba(255,204,0,0.8)', CIA:'var(--green2)', TITLE:'var(--green2)'
+  };
+
+  listEl.innerHTML = visible.map((e, vi) => {
+    const realIdx = scroll + vi;
+    const sel = realIdx === selectedIdx;
+    const nameColor = sel ? 'var(--white)' : 'var(--cyan2)';
+    return `<div class="pv-entry${sel?' pv-sel':''}" onclick="selectItem(${realIdx})">
+      <span class="pv-arrow">${sel?'▶':' '}</span>
+      <span class="pv-name" style="color:${nameColor}">${e.name}</span>
+      <span class="pv-badge" style="color:${colorMap[e.type]||'var(--gray)'}">[${e.badge}]</span>
+    </div>`;
+  }).join('');
+
+  // Bottom screen info
+  const sel = library[selectedIdx];
+  if (sel) {
+    document.getElementById('pv-info-name').textContent = sel.name;
+    document.getElementById('pv-info-name').style.color = 'var(--cyan)';
+
+    let typeStr = '', typeColor = '';
+    if (sel.type === 'HOMEBREW')  { typeStr = 'HOMEBREW GAME [.3DSX]'; typeColor = 'var(--pink)'; }
+    else if (sel.type === 'EMULATOR') { typeStr = 'EMULATOR [.3DSX]';  typeColor = 'var(--cyan)'; }
+    else if (sel.type === 'CIA')   { typeStr = 'INSTALL VIA FBI [.CIA]'; typeColor = 'var(--green)'; }
+    else if (sel.type === 'ROM')   { typeStr = `ROM [${sel.system}] AUTO-LAUNCH`; typeColor = 'var(--yellow)'; }
+
+    document.getElementById('pv-info-type').textContent = `TYPE: ${typeStr}`;
+    document.getElementById('pv-info-type').style.color = typeColor;
+
+    let path = '';
+    if (sel.type === 'ROM')      path = `sdmc:/roms/${sel.system}/${sel.file.name}`;
+    else if (sel.type === 'CIA') path = `sdmc:/cia/${sel.file.name}`;
+    else path = `sdmc:/3ds/${sel.file.name.replace('.3dsx','')}/${sel.file.name}`;
+    document.getElementById('pv-info-path').textContent = path;
+  }
+}
+
+function renderSDTree() {
+  const el = document.getElementById('sd-tree');
+  if (!library.length) {
+    el.innerHTML = `<div class="sd-empty">Add files to see<br>the SD card layout.</div>`;
+    return;
+  }
+  const hb   = library.filter(e => e.type === 'HOMEBREW');
+  const emu  = library.filter(e => e.type === 'EMULATOR');
+  const cias = library.filter(e => e.type === 'CIA');
+  const roms = {};
+  library.filter(e => e.type === 'ROM').forEach(e => {
+    if (!roms[e.system]) roms[e.system] = [];
+    roms[e.system].push(e);
+  });
+
+  let html = `<div class="tree-root">📁 sdmc:/</div>`;
+
+  if (hb.length || emu.length) {
+    html += `<div class="tree-folder">📁 3ds/</div>`;
+    html += `<div class="tree-folder" style="padding-left:24px">📁 CyberHub/</div>`;
+    html += `<div class="tree-file emu" style="padding-left:36px">⚙ CyberHub.3dsx</div>`;
+    emu.forEach(e => {
+      const n = e.file.name.replace('.3dsx','');
+      html += `<div class="tree-folder" style="padding-left:24px">📁 ${n}/</div>`;
+      html += `<div class="tree-file emu" style="padding-left:36px">⚙ ${e.file.name}</div>`;
+    });
+    hb.forEach(e => {
+      const n = e.file.name.replace('.3dsx','');
+      html += `<div class="tree-folder" style="padding-left:24px">📁 ${n}/</div>`;
+      html += `<div class="tree-file hb" style="padding-left:36px">🎮 ${e.file.name}</div>`;
+    });
+  }
+  if (cias.length) {
+    html += `<div class="tree-folder">📁 cia/</div>`;
+    cias.forEach(e => { html += `<div class="tree-file cia" style="padding-left:24px">📦 ${e.file.name}</div>`; });
+  }
+  if (Object.keys(roms).length) {
+    html += `<div class="tree-folder">📁 roms/</div>`;
+    for (const sys of Object.keys(roms).sort()) {
+      html += `<div class="tree-folder" style="padding-left:24px">📁 ${sys}/</div>`;
+      roms[sys].forEach(e => { html += `<div class="tree-file rom" style="padding-left:36px">🕹 ${e.file.name}</div>`; });
+    }
+  }
+  el.innerHTML = html;
+}
+
+// ── Export to SD ──────────────────────────────────────────────────────────────
+async function exportToSD() {
+  if (!('showDirectoryPicker' in window)) { toast('USE CHROME OR EDGE FOR SD EXPORT', true); return; }
+  if (!library.length) return;
+  let rootDir;
+  try { rootDir = await window.showDirectoryPicker({ mode:'readwrite', startIn:'desktop' }); }
+  catch { return; }
+
+  const overlay = document.getElementById('prog-overlay');
+  const fill    = document.getElementById('prog-fill');
+  const msg     = document.getElementById('prog-msg');
+  overlay.classList.add('show');
+
+  async function getDir(...parts) {
+    let dir = rootDir;
+    for (const p of parts) dir = await dir.getDirectoryHandle(p, { create:true });
+    return dir;
+  }
+  async function writeFile(dir, file) {
+    const fh = await dir.getFileHandle(file.name, { create:true });
+    const w  = await fh.createWritable();
+    await w.write(file); await w.close();
+  }
+
+  try {
+    for (let i = 0; i < library.length; i++) {
+      const e   = library[i];
+      fill.style.width = Math.round((i/library.length)*100) + '%';
+      msg.textContent  = `Writing: ${e.file.name}`;
+
+      if (e.type === 'HOMEBREW' || e.type === 'EMULATOR') {
+        await writeFile(await getDir('3ds', e.file.name.replace('.3dsx','')), e.file);
+      } else if (e.type === 'CIA') {
+        await writeFile(await getDir('cia'), e.file);
+      } else if (e.type === 'ROM') {
+        await writeFile(await getDir('roms', e.system), e.file);
+      }
+      await new Promise(r => setTimeout(r, 40));
+    }
+    fill.style.width = '100%';
+    msg.textContent  = 'Complete!';
+    await new Promise(r => setTimeout(r, 600));
+    overlay.classList.remove('show');
+    toast(`SD READY — ${library.length} FILES WRITTEN`);
+  } catch(err) {
+    overlay.classList.remove('show');
+    toast('WRITE ERROR: ' + err.message, true);
+  }
+}
+
+// ── Download source code as zip hint ─────────────────────────────────────────
+function downloadSource() {
+  toast('SOURCE CODE IS IN CyberHub.zip — BUILD WITH DEVKITPRO TO GET .3DSX');
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, isErr) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (isErr ? ' err' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = '', 3000);
+}
+
+// ── Drag & drop ───────────────────────────────────────────────────────────────
+const dz = document.getElementById('dropzone');
+dz.addEventListener('click',     () => document.getElementById('fileInput').click());
+dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('dragover'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('dragover'); addFiles(e.dataTransfer.files); });
+document.getElementById('fileInput').addEventListener('change', e => { addFiles(e.target.files); e.target.value=''; });
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => { e.preventDefault(); addFiles(e.dataTransfer.files); });
+
+// PSY meter ticks
+setInterval(() => { if (library.length) renderPreview(); }, 1000);
+
+render();
+</script>
+</body>
+</html>
